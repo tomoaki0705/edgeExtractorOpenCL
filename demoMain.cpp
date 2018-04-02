@@ -29,6 +29,8 @@ int main(int argc, char** argv)
     bool loopFlag = true;
     bool gpuFlag = false;
     bool processFlag = false;
+    int dDepth = CV_8U;
+    int cDx = 1, cDy = 1;
 
     while (loopFlag)
     {
@@ -37,12 +39,13 @@ int main(int argc, char** argv)
         {
             if (gpuFlag)
             {
-                //cv::UMat u = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY);
-                //cv::Canny()
+                cv::UMat uSrc = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY), uDst;
+                cv::Sobel(uSrc, uDst, dDepth, cDx, cDy);
+                result = uDst.getMat(cv::ACCESS_READ).clone();
             }
             else
             {
-                cv::Sobel(originalImage, result, CV_8U, 1, 1);
+                cv::Sobel(originalImage, result, dDepth, cDx, cDy);
             }
         }
         else
