@@ -20,6 +20,11 @@ int main(int argc, char** argv)
     }
 
     cv::Mat originalImage = cv::imread(parser.get<cv::String>("@input"), cv::IMREAD_GRAYSCALE);
+    if (originalImage.empty())
+    {
+        std::cerr << "Failed to load from " << parser.get<cv::String>("@input") << std::endl;
+        return -2;
+    }
 
     bool loopFlag = true;
     bool gpuFlag = false;
@@ -27,11 +32,45 @@ int main(int argc, char** argv)
 
     while (loopFlag)
     {
-        cv::imshow(windowName, originalImage);
-        char c = cv::waitKey(1);
-        if (c == 'q' || c == 'Q' || c == ESC_KEY)
+        cv::Mat result;
+        if (processFlag)
         {
+            if (gpuFlag)
+            {
+                //cv::UMat u = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY);
+                //cv::Canny()
+            }
+            else
+            {
+                cv::Sobel(originalImage, result, CV_8U, 1, 1);
+            }
+        }
+        else
+        {
+            result = originalImage.clone();
+        }
+
+        cv::imshow(windowName, result);
+
+        char c = cv::waitKey(1);
+        switch (c)
+        {
+        case 'q':
+        case 'Q':
+        case ESC_KEY:
             loopFlag = false;
+            break;
+        case ' ':
+            processFlag = !processFlag;
+            break;
+        case 'g':
+        case 'G':
+            gpuFlag = true;
+            break;
+        case 'c':
+        case 'C':
+            gpuFlag = false;
+            break;
         }
     }
 
