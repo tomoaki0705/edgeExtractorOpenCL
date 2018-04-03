@@ -22,3 +22,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # link library path
 target_link_libraries(${TARGET_NAME} ${OpenCV_LIBS})
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wno-psabi")
+endif()
