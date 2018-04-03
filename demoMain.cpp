@@ -140,8 +140,8 @@ int main(int argc, char** argv)
 
     bool loopFlag = true;
     bool gpuFlag = parser.get<cv::String>("device").compare("gpu") == 0;
-    bool processFlag = false;
-    bool showWindow = !parser.get<bool>("headless");
+    bool processFlag = parser.get<bool>("headless");
+    bool showWindow = !processFlag;
     int dDepth = CV_8U;
     int cDx = 1, cDy = 1;
     int frameCount = 0;
@@ -177,9 +177,9 @@ int main(int argc, char** argv)
             processStart = processFinish = memoryFinish = cv::getTickCount();
         }
         recorder.addRecord(memoryStart, processStart, processFinish, memoryFinish);
-        std::cout << std::setprecision(16) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_UPLOAD) << '\t'
-                  << std::setprecision(16) << recorder.getRecord(REDUCE_MEDIAN, PROCESS) << '\t' 
-                  << std::setprecision(16) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_DOWNLOAD) << "[ms]\r";
+        std::cout << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_UPLOAD) << '\t'
+                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, PROCESS) << '\t' 
+                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_DOWNLOAD) << "[ms]\r";
 
         if (showWindow)
         {
@@ -220,6 +220,7 @@ int main(int argc, char** argv)
             }
         }
     }
+    std::cout << std::endl;
 
     cv::destroyAllWindows();
     return 0;
