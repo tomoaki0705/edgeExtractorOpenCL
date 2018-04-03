@@ -3,7 +3,8 @@
 #include <iostream>
 
 cv::String keys =
-    "{h|false|help message}"
+    "{h help|false|help message}"
+    "{headless|false|don't show window}"
     "{@input||filename}";
 cv::String windowName = "output";
 const char ESC_KEY = 27;
@@ -12,11 +13,18 @@ int main(int argc, char** argv)
 {
     cv::CommandLineParser parser(argc, argv, keys);
 
-    if (parser.get<cv::String>("@input").empty())
+    if (parser.get<cv::String>("@input").empty() || parser.get<bool>("help"))
     {
         parser.printMessage();
-        std::cerr << "Please specify an input image" << std::endl;
-        return -1;
+        if (parser.get<cv::String>("@input").empty())
+        {
+            std::cerr << "Please specify an input image" << std::endl;
+            return -1;
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     cv::Mat originalImage = cv::imread(parser.get<cv::String>("@input"), cv::IMREAD_GRAYSCALE);
@@ -29,8 +37,10 @@ int main(int argc, char** argv)
     bool loopFlag = true;
     bool gpuFlag = false;
     bool processFlag = false;
+    bool showWindow = !parser.get<bool>("headless");
     int dDepth = CV_8U;
     int cDx = 1, cDy = 1;
+    int frameCount = 0;
 
     while (loopFlag)
     {
@@ -53,27 +63,37 @@ int main(int argc, char** argv)
             result = originalImage.clone();
         }
 
-        cv::imshow(windowName, result);
-
-        char c = cv::waitKey(1);
-        switch (c)
+        if (showWindow)
         {
-        case 'q':
-        case 'Q':
-        case ESC_KEY:
-            loopFlag = false;
-            break;
-        case ' ':
-            processFlag = !processFlag;
-            break;
-        case 'g':
-        case 'G':
-            gpuFlag = true;
-            break;
-        case 'c':
-        case 'C':
-            gpuFlag = false;
-            break;
+            cv::imshow(windowName, result);
+
+            char c = cv::waitKey(1);
+            switch (c)
+            {
+            case 'q':
+            case 'Q':
+            case ESC_KEY:
+                loopFlag = false;
+                break;
+            case ' ':
+                processFlag = !processFlag;
+                break;
+            case 'g':
+            case 'G':
+                gpuFlag = true;
+                break;
+            case 'c':
+            case 'C':
+                gpuFlag = false;
+                break;
+            }
+        }
+        else
+        {
+            if (100 < frameCount++)
+            {
+                loopFlag = false;
+            }
         }
     }
 
