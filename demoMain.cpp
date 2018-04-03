@@ -179,7 +179,7 @@ int main(int argc, char** argv)
         recorder.addRecord(memoryStart, processStart, processFinish, memoryFinish);
         std::cout << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_UPLOAD) << '\t'
                   << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, PROCESS) << '\t' 
-                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_DOWNLOAD) << "[ms]\r";
+                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_DOWNLOAD) << "\t[ms]\r";
 
         if (showWindow)
         {
