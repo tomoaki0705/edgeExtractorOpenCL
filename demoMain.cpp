@@ -1,126 +1,56 @@
 #include <CL/cl.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
-#include <numeric>
+#include "measureRecord.h"
 
+#define KEY_HELP      "help"
+#define KEY_DEVICE    "device"
+#define KEY_HEADLESS  "headless"
+#define KEY_LOOPCOUNT "loopCount"
+#define KEY_TIME      "time"
+#define KEY_INPUT     "@input"
+#define VALUE_MAX     "max"
+#define VALUE_MIN     "min"
+#define VALUE_AVE     "ave"
 cv::String keys =
-    "{h help   |false|help message}"
-    "{device   |cpu  |cpu/gpu}"
-    "{headless |false|don't show window}"
-    "{loopCount|1000 |Loop count for headless mode}"
-    "{@input   |     |filename}";
+    "{" KEY_HELP " h" "|false |help message}"
+    "{" KEY_DEVICE    "|cpu   |cpu/gpu}"
+    "{" KEY_HEADLESS  "|false |don't show window}"
+    "{" KEY_LOOPCOUNT "|1000  |Loop count for headless mode}"
+    "{" KEY_TIME      "|median|one of median/" VALUE_MAX "/" VALUE_MIN "/" VALUE_AVE "}"
+    "{" KEY_INPUT     "|      |filename}";
 cv::String windowName = "output";
 const char ESC_KEY = 27;
 
-typedef int64 tickCount;
-enum reduceType
+reduceType parseReduceType(const cv::CommandLineParser& parser)
 {
-    REDUCE_MIN,
-    REDUCE_MAX,
-    REDUCE_AVERAGE,
-    REDUCE_MEDIAN
-};
-enum recordType
-{
-    MEMORY_UPLOAD,
-    PROCESS,
-    MEMORY_DOWNLOAD
-};
-
-class measureRecord
-{
-public:
-    measureRecord() :sampleCount(10){};
-    measureRecord(int _sampleCount) :sampleCount(_sampleCount){};
-    ~measureRecord(){};
-    void addRecord(tickCount memoryStart, tickCount processStart, tickCount processFinish, tickCount memoryFinish)
+    cv::String reduceString = parser.get<cv::String>(KEY_TIME).toLowerCase();
+    if (reduceString.compare(VALUE_MAX) == 0 || reduceString.compare("maximum") == 0)
     {
-        push_back(processStart - memoryStart, MEMORY_UPLOAD);
-        push_back(processFinish - processStart, PROCESS);
-        push_back(memoryFinish - processFinish, MEMORY_DOWNLOAD);
+        return REDUCE_MAX;
     }
-    double getRecord(reduceType type, recordType record) const
+    else if (reduceString.compare(VALUE_MIN) == 0 || reduceString.compare("minimum") == 0)
     {
-        double result;
-        std::vector<tickCount> *v = getArray(record);
-        if (v->size() < sampleCount)
-        {
-            return 0;
-        }
-        switch (type)
-        {
-        case REDUCE_MIN:
-            result = (double)*std::min_element(v->begin(), v->end());
-            break;
-        case REDUCE_MAX:
-            result = (double)*std::max_element(v->begin(), v->end());
-            break;
-        case REDUCE_AVERAGE:
-            result = (double)(std::accumulate(v->begin(), v->end(), (int64)0)) / v->size();
-            break;
-        case REDUCE_MEDIAN:
-            {
-                std::vector<tickCount> a;
-                std::copy(v->begin(), v->end(), back_inserter(a));
-                std::sort(a.begin(), a.end());
-                result = (double)a[a.size() / 2];
-            }
-            break;
-        }
-        return result * 1000. / cv::getTickFrequency();
-    };
-    void clear()
-    {
-        std::vector<tickCount> *v;
-        v = getArray(MEMORY_UPLOAD);
-        v->clear();
-        v = getArray(MEMORY_DOWNLOAD);
-        v->clear();
-        v = getArray(PROCESS);
-        v->clear();
+        return REDUCE_MIN;
     }
-private:
-    std::vector<tickCount> * getArray(recordType record) const
+    else if (reduceString.compare(VALUE_AVE) == 0 || reduceString.compare("average") == 0 || reduceString.compare("mean") == 0)
     {
-        std::vector<tickCount> *v;
-        switch (record)
-        {
-        case MEMORY_UPLOAD:
-            v = (std::vector<tickCount>*)&memoryUpload;
-            break;
-        case MEMORY_DOWNLOAD:
-            v = (std::vector<tickCount>*)&memoryDownload;
-            break;
-        case PROCESS:
-            v = (std::vector<tickCount>*)&process;
-            break;
-        }
-        return v;
+        return REDUCE_AVERAGE;
     }
-    void push_back(tickCount count, recordType record)
+    else
     {
-        std::vector<tickCount> *v = getArray(record);
-        v->push_back(count);
-        if (sampleCount < v->size())
-        {
-            v->erase(v->begin());
-        }
+        return REDUCE_MEDIAN;
     }
-    int sampleCount;
-    std::vector<tickCount> memoryUpload;
-    std::vector<tickCount> process;
-    std::vector<tickCount> memoryDownload;
-};
-
+}
 
 int main(int argc, char** argv)
 {
     cv::CommandLineParser parser(argc, argv, keys);
-
-    if (parser.get<cv::String>("@input").empty() || parser.get<bool>("help"))
+    cv::String imageSource = parser.get<cv::String>(KEY_INPUT);
+    if (imageSource.empty() || parser.get<bool>(KEY_HELP))
     {
         parser.printMessage();
-        if (parser.get<cv::String>("@input").empty())
+        if (imageSource.empty())
         {
             std::cerr << "Please specify an input image" << std::endl;
             return -1;
@@ -131,22 +61,23 @@ int main(int argc, char** argv)
         }
     }
 
-    cv::Mat originalImage = cv::imread(parser.get<cv::String>("@input"), cv::IMREAD_GRAYSCALE);
+    cv::Mat originalImage = cv::imread(imageSource, cv::IMREAD_GRAYSCALE);
     if (originalImage.empty())
     {
-        std::cerr << "Failed to load from " << parser.get<cv::String>("@input") << std::endl;
+        std::cerr << "Failed to load from " << imageSource << std::endl;
         return -2;
     }
 
     bool loopFlag = true;
-    bool gpuFlag = parser.get<cv::String>("device").compare("gpu") == 0;
-    bool processFlag = parser.get<bool>("headless");
+    bool gpuFlag = parser.get<cv::String>(KEY_DEVICE).compare("gpu") == 0;
+    bool processFlag = parser.get<bool>(KEY_HEADLESS);
     bool showWindow = !processFlag;
     int dDepth = CV_8U;
     int cDx = 1, cDy = 1;
     int frameCount = 0;
     tickCount memoryStart, processStart, processFinish, memoryFinish;
     measureRecord recorder;
+    reduceType reduce = parseReduceType(parser);
 
     while (loopFlag)
     {
@@ -177,9 +108,9 @@ int main(int argc, char** argv)
             processStart = processFinish = memoryFinish = cv::getTickCount();
         }
         recorder.addRecord(memoryStart, processStart, processFinish, memoryFinish);
-        std::cout << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_UPLOAD) << '\t'
-                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, PROCESS) << '\t' 
-                  << std::setprecision(4) << recorder.getRecord(REDUCE_MEDIAN, MEMORY_DOWNLOAD) << "\t[ms]\r";
+        std::cout << std::setprecision(4) << recorder.getRecord(reduce, MEMORY_UPLOAD) << '\t'
+                  << std::setprecision(4) << recorder.getRecord(reduce, PROCESS) << '\t' 
+                  << std::setprecision(4) << recorder.getRecord(reduce, MEMORY_DOWNLOAD) << "\t[ms]\r";
 
         if (showWindow)
         {
@@ -214,7 +145,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            if (parser.get<int>("loopCount") < ++frameCount)
+            if (parser.get<int>(KEY_LOOPCOUNT) < ++frameCount)
             {
                 loopFlag = false;
             }

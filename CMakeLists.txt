@@ -8,7 +8,7 @@ project(edgeExtractorOpenCL)
 set(TARGET_NAME demoProgram)
 
 # add source code for executable
-add_executable(${TARGET_NAME} demoMain.cpp)
+add_executable(${TARGET_NAME} demoMain.cpp measureRecord.cpp measureRecord.h)
 
 # find packages
 find_package(OpenCL)
