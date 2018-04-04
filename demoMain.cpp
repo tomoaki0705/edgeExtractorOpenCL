@@ -12,9 +12,10 @@
 #define VALUE_MAX     "max"
 #define VALUE_MIN     "min"
 #define VALUE_AVE     "ave"
+#define VALUE_GPU     "gpu"
 cv::String keys =
     "{" KEY_HELP " h" "|false |help message}"
-    "{" KEY_DEVICE    "|cpu   |cpu/gpu}"
+    "{" KEY_DEVICE    "|cpu   |cpu/" VALUE_GPU "}"
     "{" KEY_HEADLESS  "|false |don't show window}"
     "{" KEY_LOOPCOUNT "|1000  |Loop count for headless mode}"
     "{" KEY_TIME      "|median|one of median/" VALUE_MAX "/" VALUE_MIN "/" VALUE_AVE "}"
@@ -69,7 +70,7 @@ int main(int argc, char** argv)
     }
 
     bool loopFlag = true;
-    bool gpuFlag = parser.get<cv::String>(KEY_DEVICE).compare("gpu") == 0;
+    bool gpuFlag = parser.get<cv::String>(KEY_DEVICE).compare(VALUE_GPU) == 0;
     bool processFlag = parser.get<bool>(KEY_HEADLESS);
     bool showWindow = !processFlag;
     int dDepth = CV_8U;
