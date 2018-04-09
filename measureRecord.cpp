@@ -36,6 +36,7 @@ double measureRecord::getRecord(reduceType type, recordType record) const
         result = (double)(std::accumulate(v->begin(), v->end(), (tickCount)0)) / v->size();
         break;
     case REDUCE_MEDIAN:
+    default:
         {
             std::vector<tickCount> a;
             std::copy(v->begin(), v->end(), back_inserter(a));
@@ -69,6 +70,10 @@ std::vector<tickCount> * measureRecord::getArray(recordType record) const
     case MEMORY_DOWNLOAD:
         v = (std::vector<tickCount>*)&memoryDownload;
         break;
+    case TOTAL:
+        v = (std::vector<tickCount>*)&total;
+        break;
+    default:
     case PROCESS:
         v = (std::vector<tickCount>*)&process;
         break;
@@ -91,4 +96,5 @@ void measureRecord::addRecord(tickCount memoryStart, tickCount processStart, tic
     push_back(processStart - memoryStart, MEMORY_UPLOAD);
     push_back(processFinish - processStart, PROCESS);
     push_back(memoryFinish - processFinish, MEMORY_DOWNLOAD);
+    push_back(memoryFinish - memoryStart, TOTAL);
 }

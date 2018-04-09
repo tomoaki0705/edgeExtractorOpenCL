@@ -13,7 +13,8 @@ enum recordType
 {
     MEMORY_UPLOAD,
     PROCESS,
-    MEMORY_DOWNLOAD
+    MEMORY_DOWNLOAD,
+    TOTAL,
 };
 
 class measureRecord
@@ -32,5 +33,6 @@ private:
     std::vector<tickCount> memoryUpload;
     std::vector<tickCount> process;
     std::vector<tickCount> memoryDownload;
+    std::vector<tickCount> total;
 };
 

@@ -1,5 +1,6 @@
 #include <CL/cl.h>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/ocl.hpp>
 #include <iostream>
 #include "measureRecord.h"
 
@@ -8,6 +9,7 @@
 #define KEY_HEADLESS  "headless"
 #define KEY_LOOPCOUNT "loopCount"
 #define KEY_TIME      "time"
+#define KEY_SAMPLE    "sample"
 #define KEY_INPUT     "@input"
 #define VALUE_MAX     "max"
 #define VALUE_MIN     "min"
@@ -19,6 +21,7 @@ cv::String keys =
     "{" KEY_HEADLESS  "|false |don't show window}"
     "{" KEY_LOOPCOUNT "|1000  |Loop count for headless mode}"
     "{" KEY_TIME      "|median|one of median/" VALUE_MAX "/" VALUE_MIN "/" VALUE_AVE "}"
+    "{" KEY_SAMPLE    "|10    |number of sample for " KEY_TIME "}"
     "{" KEY_INPUT     "|      |filename}";
 cv::String windowName = "output";
 const char ESC_KEY = 27;
@@ -76,8 +79,9 @@ int main(int argc, char** argv)
     int dDepth = CV_8U;
     int cDx = 1, cDy = 1;
     int frameCount = 0;
+    int cPrecision = 3;
     tickCount memoryStart, processStart, processFinish, memoryFinish;
-    measureRecord recorder;
+    measureRecord recorder(parser.get<int>(KEY_SAMPLE));
     reduceType reduce = parseReduceType(parser);
 
     while (loopFlag)
@@ -85,22 +89,14 @@ int main(int argc, char** argv)
         cv::Mat result;
         if (processFlag)
         {
-            if (gpuFlag)
-            {
-                memoryStart = cv::getTickCount();
-                cv::UMat uSrc = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY), uDst;
-                processStart = cv::getTickCount();
-                cv::Sobel(uSrc, uDst, dDepth, cDx, cDy);
-                processFinish = cv::getTickCount();
-                result = uDst.getMat(cv::ACCESS_READ).clone();
-                memoryFinish = cv::getTickCount();
-            }
-            else
-            {
-                memoryStart = processStart = cv::getTickCount();
-                cv::Sobel(originalImage, result, dDepth, cDx, cDy);
-                processFinish = memoryFinish = cv::getTickCount();
-            }
+            cv::ocl::setUseOpenCL(gpuFlag);
+            memoryStart = cv::getTickCount();
+            cv::UMat uSrc = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY), uDst;
+            processStart = cv::getTickCount();
+            cv::Sobel(uSrc, uDst, dDepth, cDx, cDy);
+            processFinish = cv::getTickCount();
+            result = uDst.getMat(cv::ACCESS_READ).clone();
+            memoryFinish = cv::getTickCount();
         }
         else
         {
@@ -109,9 +105,10 @@ int main(int argc, char** argv)
             processStart = processFinish = memoryFinish = cv::getTickCount();
         }
         recorder.addRecord(memoryStart, processStart, processFinish, memoryFinish);
-        std::cout << std::setprecision(4) << recorder.getRecord(reduce, MEMORY_UPLOAD) << '\t'
-                  << std::setprecision(4) << recorder.getRecord(reduce, PROCESS) << '\t' 
-                  << std::setprecision(4) << recorder.getRecord(reduce, MEMORY_DOWNLOAD) << "\t[ms]\r";
+        std::cout << std::setprecision(cPrecision) << recorder.getRecord(reduce, MEMORY_UPLOAD) << '\t'
+                  << std::setprecision(cPrecision) << recorder.getRecord(reduce, PROCESS) << '\t' 
+                  << std::setprecision(cPrecision) << recorder.getRecord(reduce, MEMORY_DOWNLOAD) << '\t'
+                  << std::setprecision(cPrecision) << recorder.getRecord(reduce, TOTAL) << "\t[ms]\r";
 
         if (showWindow)
         {
