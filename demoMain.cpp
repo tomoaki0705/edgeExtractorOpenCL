@@ -91,9 +91,9 @@ int main(int argc, char** argv)
         {
             cv::ocl::setUseOpenCL(gpuFlag);
             memoryStart = cv::getTickCount();
-            cv::UMat uSrc = originalImage.getUMat(cv::USAGE_ALLOCATE_DEVICE_MEMORY), uDst;
+            cv::UMat uSrc = originalImage.getUMat(gpuFlag ? cv::USAGE_ALLOCATE_DEVICE_MEMORY : cv::USAGE_ALLOCATE_HOST_MEMORY), uDst;
             processStart = cv::getTickCount();
-            cv::Sobel(uSrc, uDst, dDepth, cDx, cDy);
+            cv::Laplacian(uSrc, uDst, dDepth);
             processFinish = cv::getTickCount();
             result = uDst.getMat(cv::ACCESS_READ).clone();
             memoryFinish = cv::getTickCount();
