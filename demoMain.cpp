@@ -51,25 +51,39 @@ int main(int argc, char** argv)
 {
     cv::CommandLineParser parser(argc, argv, keys);
     cv::String imageSource = parser.get<cv::String>(KEY_INPUT);
-    if (imageSource.empty() || parser.get<bool>(KEY_HELP))
+    if (parser.get<bool>(KEY_HELP))
     {
         parser.printMessage();
-        if (imageSource.empty())
-        {
-            std::cerr << "Please specify an input image" << std::endl;
-            return -1;
-        }
-        else
-        {
-            return 0;
-        }
+        return 0;
     }
 
-    cv::Mat originalImage = cv::imread(imageSource, cv::IMREAD_GRAYSCALE);
-    if (originalImage.empty())
+    cv::Mat originalImage;
+    cv::VideoCapture capture(0);
+    if (capture.isOpened())
     {
-        std::cerr << "Failed to load from " << imageSource << std::endl;
-        return -2;
+        std::cerr << "camera opened" << std::endl;
+        capture.set(cv::CAP_PROP_FRAME_WIDTH,  640);
+        capture.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+        std::cerr << "configured frame size" << std::endl;
+    }
+    else
+        std::cerr << "failed to open camera" << std::endl;
+
+    if (capture.isOpened() == false)
+    {
+        originalImage = cv::imread(parser.get<std::string>(KEY_INPUT));
+        std::cerr << "Trying to read from file" << std::endl;
+        if (originalImage.empty())
+        {
+            std::cerr << "Failed to load from " << imageSource << std::endl;
+            std::cerr << "No camera device found" << std::endl;
+            return -2;
+        }
+    }
+    else
+    {
+        capture >> originalImage;
+        capture >> originalImage;
     }
 
     bool loopFlag = true;
@@ -109,6 +123,11 @@ int main(int argc, char** argv)
                   << std::setprecision(cPrecision) << recorder.getRecord(reduce, PROCESS) << '\t' 
                   << std::setprecision(cPrecision) << recorder.getRecord(reduce, MEMORY_DOWNLOAD) << '\t'
                   << std::setprecision(cPrecision) << recorder.getRecord(reduce, TOTAL) << "\t[ms]\r";
+
+        if (capture.isOpened())
+        {
+            capture >> originalImage;
+        }
 
         if (showWindow)
         {
